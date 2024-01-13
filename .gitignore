@@ -1,0 +1,5 @@
+*.CSV
+*.pdf
+\data
+/data
+*.docx

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import sklearn.metrics as skmet
 import scipy.optimize as opt
 from sklearn import cluster
-
+import seaborn as sns
 import errors as err
 import cluster_tools as ct
 
@@ -37,14 +37,14 @@ def read_world_bank_csv(filename):
     """
 
     # set year range and country list to filter the dataset
-    start_from_yeart = 1990
+    start_from_yeart = 1960
     end_to_year = 2021
 
     # read csv using pandas
     wb_df = pd.read_csv(filename,
                         skiprows=3, iterator=False)
 
-    # clean na data, remove columns
+    # clean data, remove columns
     wb_df.dropna(axis=1)
 
     # prepare a column list to select from the dataset
@@ -69,6 +69,29 @@ def read_world_bank_csv(filename):
 
     # return the two dataframes year as index and country as index
     return df_year_index, df_country_index
+
+
+def get_world_bank_metadata_country(filename, filter_income_group):
+    """
+    read the metadata csv and reutrn country list by imcome group.
+
+    Parameters
+    ----------
+    filename : string
+        metadata file name.
+    filter_income_group : string
+        income group filter name.
+
+    Returns
+    -------
+    country_list : pandas.DataFrame
+        list of filtered country.
+
+    """
+    wb_md_df = pd.read_csv(filename, iterator=False)
+    country_list = wb_md_df.loc[wb_md_df["IncomeGroup"] ==
+                                filter_income_group]["TableName"]
+    return country_list
 
 
 def one_silhoutte(df_xy, num_of_cluster):
@@ -103,16 +126,17 @@ def one_silhoutte(df_xy, num_of_cluster):
     return score
 
 
-def poly_fit_function(var_x, const_a, const_b, const_c):
+def poly_fit_function(var_x, const_a, const_b, const_c):  # , const_d):
     """ Calulates polynominal. """
 
-    var_x = var_x - 1990
-    poly_fun = const_a + const_b*var_x + const_c*var_x**2  # + d*x**3# + e*x**4
+    var_x = var_x - 1960
+    poly_fun = const_a + const_b*var_x + const_c*var_x**2
 
     return poly_fun
 
 
-def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
+def find_and_plot_cluster(df_cluster, selected_column_1, selected_column_2,
+                          title, filename):
     """
     find the cluster in dataset and display on the graph.
 
@@ -126,6 +150,8 @@ def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
         seleced column 2 for comparesion.
     title : string
         title for graph.
+    filename: string
+        file name for save graph on disk.
 
     Returns
     -------
@@ -137,9 +163,9 @@ def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
     df_norm, df_min, df_max = ct.scaler(df_cluster)
 
     # calculate silhouette score for 2 to 10 clusters
-    # for ic in range(2, 11):
-    #    score = one_silhoutte(df_cluster, ic)
-    #   print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
+    for ic in range(2, 11):
+      score = one_silhoutte(df_cluster, ic)
+      print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
 
     ncluster = 3
 
@@ -148,7 +174,6 @@ def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
     # Fit the data, results are stored in the kmeans object
     cluster_fit = kmeans.fit_predict(df_norm)  # fit done on x,y pairs
     df_cluster["cluster"] = cluster_fit
-    # print( df_cluster)
     labels = kmeans.labels_
 
     # extract the estimated cluster centres and convert to original scales
@@ -156,7 +181,7 @@ def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
     # denormalize the cluster centers
     cen = ct.backscale(cen, df_min, df_max)
 
-    plt.figure(figsize=(8.0, 8.0), dpi=300)
+    plt.figure(figsize=(10.0, 8.0), dpi=300)
 
     # color for clusters
     colors = ['red', 'green', 'blue', 'orange', 'purple']
@@ -175,24 +200,28 @@ def find_cluster(df_cluster, selected_column_1, selected_column_2, title):
     # show cluster centres
     plt.scatter(cen[:, 0], cen[:, 1], 80, "y", marker="X",
                 label="Cluster Center")
-    plt.xlabel(selected_column_1, fontsize=24, color='black')
-    plt.ylabel(selected_column_2, fontsize=24, color='black')
+    plt.xlabel(selected_column_1, fontsize=26, color='black')
+    plt.ylabel(selected_column_2, fontsize=26, color='black')
 
     # x-axis tick labels font size
-    plt.tick_params(axis='x', labelsize=18)
+    plt.tick_params(axis='x', labelsize=20)
 
     # y-axis tick labels font size
-    plt.tick_params(axis='y', labelsize=18)
+    plt.tick_params(axis='y', labelsize=20)
 
-    plt.title(title, fontsize=30, color='navy')
+    # set graph labels title and limit
+    plt.ylim(0, 60)
 
-    plt.legend()
+    plt.title(title, fontsize=30, color='#035bbc')
 
+    plt.legend(fontsize=20)
+    plt.grid(True)
     # save file
-    plt.savefig(title+".png", dpi=300)
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
 
 
-def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year):
+def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year,
+                        ylim_max, filename):
     """
     find the the fit for the givin dataframe and using it make the forcast
 
@@ -206,13 +235,14 @@ def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year):
         title for .
     forcast_to_year : TYPE
         title for graph.
+    filename: string
+        file name for save graph on disk.
 
     Returns
     -------
     None.
 
     """
-
     # fitting
 
     df_cluster["Year"] = df_cluster.index
@@ -223,7 +253,7 @@ def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year):
     # forcast
 
     # year range for forcast
-    years = np.arange(1990, forcast_to_year)
+    years = np.arange(df_cluster["Year"].min(), forcast_to_year)
     # call polynomial function to get forcast
     forecast = poly_fit_function(years, *param)
     # find the standard deviation
@@ -245,42 +275,75 @@ def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year):
                      alpha=0.4, label="fit")
 
     # x-axis tick labels font size
-    plt.tick_params(axis='x', labelsize=18)
+    plt.tick_params(axis='x', labelsize=20)
     # y-axis tick labels font size
-    plt.tick_params(axis='y', labelsize=18)
+    plt.tick_params(axis='y', labelsize=20)
 
     # set graph labels title and limit
-    plt.ylim(0, 20)
-    plt.xlabel("Year", fontsize=24, color='black')
-    plt.ylabel("Death rate, crude (per 1,000 people)", fontsize=24,
+    plt.ylim(0, ylim_max)
+    plt.xlabel("Year", fontsize=26, color='black')
+    plt.ylabel("Death rate, crude (per 1,000 people)", fontsize=26,
                color='black')
-    plt.title(title, fontsize=30, color='navy')
-    plt.legend()
-
+    plt.title(title, fontsize=30, color='#035bbc')
+    plt.legend(fontsize=20)
+    plt.grid(True)
     # save the graph image
-    plt.savefig(title+".png", dpi=300)
-
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
 
 ########## Main Function ################
 # read csv files and get the dataframs
 # Death rate, crude (per 1,000 people)
+
+
 death_data_yw, death_data_cw = \
     read_world_bank_csv("API_SP.DYN.CDRT.IN_DS2_en_csv_v2_6303594.csv")
 
+# Birth rate, crude (per 1,000 people)
+birth_data_yw, birth_data_cw = \
+    read_world_bank_csv("API_SP.DYN.CBRT.IN_DS2_en_csv_v2_6301675.csv")
+
+
 # prepare the date for clustring
-df_for_cluster = pd.DataFrame()
-df_for_cluster["High income"] = death_data_yw["High income"]
-df_for_cluster["Low income"] = death_data_yw["Low income"]
+df_for_cluster_1960 = pd.DataFrame(index=death_data_cw.index)
+df_for_cluster_1960["death"] = death_data_cw[1960]
+df_for_cluster_1960["birth"] = birth_data_cw[1960]
+# clean data
+df_for_cluster_1960.dropna(inplace=True)
+find_and_plot_cluster(df_for_cluster_1960, "death", "birth",
+                      "Death and Brirth rate, crude " +
+                      "\n(per 1,000 people)(1960)", "cluster_1960.png")
 
-# find the cluster
-find_cluster(df_for_cluster, "High income", "Low income",
-             "Death rate, crude (per 1,000 people)")
 
-# forcast
-fitting_and_forcast(df_for_cluster, "High income", "High Income", 2025)
-fitting_and_forcast(df_for_cluster, "Low income", "Low Income", 2025)
-fitting_and_forcast(death_data_yw, "Afghanistan",
-                    "Low Income(Afghanistan)", 2025)
+# prepare the date for clustring
+df_for_cluster_2021 = pd.DataFrame(index=death_data_cw.index)
+df_for_cluster_2021["death"] = death_data_cw[2021]
+df_for_cluster_2021["birth"] = birth_data_cw[2021]
+# clean data
+df_for_cluster_2021.dropna(inplace=True)
+find_and_plot_cluster(df_for_cluster_2021, "death", "birth",
+                      "Death and Brirth rate, crude " +
+                      "\n(per 1,000 people)(2021)", "cluster_2021.png")
+
+
+# forcast death
+fitting_and_forcast(death_data_yw, "Nigeria",
+                    "Nigeria, Death rate, crude \n(per 1,000 people)" +
+                    "(Low Income Country)", 2030, 30, "nigeria_death.png")
+
+# forcast death
+fitting_and_forcast(death_data_yw, "United States",
+                    "United States, Death rate, crude \n(per 1,000 people)" +
+                    "(High Income Country)", 2030, 30, "us_death.png")
+
+# forcast birth
+fitting_and_forcast(birth_data_yw, "Nigeria",
+                    "Nigeria, Birth rate, crude \n(per 1,000 people)" +
+                    "(Low Income Country)", 2030, 60, "nigeria_birth.png")
+
+# forcast birth
+fitting_and_forcast(birth_data_yw, "United States",
+                    "United States, Birth rate, crude \n(per 1,000 people)" +
+                    "(High  Income Country)", 2030, 60, "us_birth.png")
 
 # show all plots
 plt.show()

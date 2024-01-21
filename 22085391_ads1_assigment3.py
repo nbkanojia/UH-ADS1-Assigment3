@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 import sklearn.metrics as skmet
 import scipy.optimize as opt
 from sklearn import cluster
-import seaborn as sns
 import errors as err
 import cluster_tools as ct
 
@@ -164,8 +163,8 @@ def find_and_plot_cluster(df_cluster, selected_column_1, selected_column_2,
 
     # calculate silhouette score for 2 to 10 clusters
     for ic in range(2, 11):
-      score = one_silhoutte(df_cluster, ic)
-      print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
+        score = one_silhoutte(df_cluster, ic)
+        print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
 
     ncluster = 3
 

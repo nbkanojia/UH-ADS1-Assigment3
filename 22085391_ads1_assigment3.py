@@ -271,7 +271,7 @@ def fitting_and_forcast(df_cluster, selected_column, title, forcast_to_year,
 
     # plot uncertainty range
     plt.fill_between(years, low_bountry, up_bountry, color='Orange',
-                     alpha=0.4, label="fit")
+                     alpha=0.4, label="uncertainty range")
 
     # x-axis tick labels font size
     plt.tick_params(axis='x', labelsize=20)
